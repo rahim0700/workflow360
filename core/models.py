@@ -15,7 +15,7 @@ class Visitor(models.Model):
     visitor_name = models.CharField(max_length=150)
     contact_info = models.CharField(max_length=100)
     purpose_of_visit = models.TextField()
-    host_username = models.CharField(max_length=150, blank=True, null=True)
+    host = models.CharField(max_length=150, blank=True, null=True)
     arrival_time = models.DateTimeField(auto_now_add=True)
     is_checked_out = models.BooleanField(default=False)
 
