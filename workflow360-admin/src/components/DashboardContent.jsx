@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Users, Truck, ShieldCheck, Clock, RefreshCw, Plus, X } from 'lucide-react';
+import { Users, Truck, ShieldCheck, Clock, RefreshCw, Plus, X, Search } from 'lucide-react';
 
 export default function DashboardContent({ activeTab }) {
   const [stats, setStats] = useState({
@@ -15,6 +15,9 @@ export default function DashboardContent({ activeTab }) {
   const [deliveryData, setDeliveryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,30 +61,56 @@ export default function DashboardContent({ activeTab }) {
     fetchDashboardData();
   }, [activeTab]);
 
+  // Reset search query when switching tabs
+  useEffect(() => {
+    setSearchQuery('');
+  }, [activeTab]);
+
   const handleVisitorSubmit = async (e) => {
     e.preventDefault();
     try {
       await api.post('/visitors/', newVisitor);
       setIsModalOpen(false);
       setNewVisitor({ visitor_name: '', contact_info: '', purpose_of_visit: '', host_username: '' });
-      fetchDashboardData(); // Refresh data to show the new visitor
+      fetchDashboardData();
     } catch (err) {
       console.error("Error adding visitor:", err);
       alert("Failed to save visitor. Check inputs.");
     }
   };
 
+  // Filtered Data based on Search Query
+  const filteredFieldData = fieldData.filter(item => 
+    item.agent_username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.location_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.status_notes?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredVisitorData = visitorData.filter(visitor => 
+    visitor.visitor_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    visitor.purpose_of_visit?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    visitor.host_username?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredDeliveryData = deliveryData.filter(delivery => 
+    delivery.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    delivery.item_manifest?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    delivery.status?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex-1 w-full p-8 overflow-y-auto bg-slate-900 text-white relative">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold capitalize">Overview Control Panel</h1>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm transition text-white font-medium"
-          >
-            <Plus size={16} /> Add Visitor
-          </button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h1 className="text-2xl font-bold capitalize">{activeTab} Control Panel</h1>
+        <div className="flex gap-3 w-full md:w-auto">
+          {activeTab === 'visitors' && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm transition text-white font-medium"
+            >
+              <Plus size={16} /> Add Visitor
+            </button>
+          )}
           <button 
             onClick={fetchDashboardData}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm transition text-white"
@@ -150,6 +179,22 @@ export default function DashboardContent({ activeTab }) {
         </div>
       )}
 
+      {/* Search Bar for Active Tabs */}
+      {activeTab !== 'overview' && (
+        <div className="mb-6 relative max-w-md">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+            <Search size={18} />
+          </span>
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={`Search ${activeTab}...`}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+          />
+        </div>
+      )}
+
       {/* Field Workforce Tab */}
       {activeTab === 'field' && (
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
@@ -164,10 +209,10 @@ export default function DashboardContent({ activeTab }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800 text-sm">
-              {fieldData.length === 0 ? (
-                <tr><td colSpan="5" className="p-4 text-center text-slate-400">No field activities found.</td></tr>
+              {filteredFieldData.length === 0 ? (
+                <tr><td colSpan="5" className="p-4 text-center text-slate-400">No matching field activities found.</td></tr>
               ) : (
-                fieldData.map((item) => (
+                filteredFieldData.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-850">
                     <td className="p-4 font-medium">{item.agent_username}</td>
                     <td className="p-4">{item.location_name}</td>
@@ -203,15 +248,15 @@ export default function DashboardContent({ activeTab }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800 text-sm">
-              {visitorData.length === 0 ? (
-                <tr><td colSpan="6" className="p-4 text-center text-slate-400">No visitor logs found.</td></tr>
+              {filteredVisitorData.length === 0 ? (
+                <tr><td colSpan="6" className="p-4 text-center text-slate-400">No matching visitor logs found.</td></tr>
               ) : (
-                visitorData.map((visitor) => (
+                filteredVisitorData.map((visitor) => (
                   <tr key={visitor.id} className="hover:bg-slate-850">
                     <td className="p-4 font-medium">{visitor.visitor_name}</td>
                     <td className="p-4 text-slate-300">{visitor.contact_info}</td>
                     <td className="p-4">{visitor.purpose_of_visit}</td>
-                    <td className="p-4">{visitor.host_username || 'N/A'}</td>
+                    <td className="p-4">{visitor.host || 'N/A'}</td>
                     <td className="p-4 text-slate-400">{new Date(visitor.arrival_time).toLocaleString()}</td>
                     <td className="p-4">
                       {visitor.is_checked_out ? (
@@ -243,10 +288,10 @@ export default function DashboardContent({ activeTab }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800 text-sm">
-              {deliveryData.length === 0 ? (
-                <tr><td colSpan="6" className="p-4 text-center text-slate-400">No deliveries found.</td></tr>
+              {filteredDeliveryData.length === 0 ? (
+                <tr><td colSpan="6" className="p-4 text-center text-slate-400">No matching deliveries found.</td></tr>
               ) : (
-                deliveryData.map((delivery) => (
+                filteredDeliveryData.map((delivery) => (
                   <tr key={delivery.id} className="hover:bg-slate-850">
                     <td className="p-4 font-medium">#{delivery.id}</td>
                     <td className="p-4">{delivery.department}</td>
@@ -335,7 +380,7 @@ export default function DashboardContent({ activeTab }) {
                   type="submit"
                   className="px-4 py-2 rounded-lg text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
                 >
-                  Save Visitor
+                  Save Visitor Logs
                 </button>
               </div>
             </form>
